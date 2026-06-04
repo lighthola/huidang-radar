@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "回檔雷達",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["dev-proxy.js"],
+      "port": 5175
+    }
+  ]
+}

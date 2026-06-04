@@ -1,0 +1,22 @@
+# 依賴
+node_modules/
+
+# 系統檔
+.DS_Store
+Thumbs.db
+
+# 編輯器
+.vscode/
+.idea/
+*.swp
+
+# 日誌與暫存
+*.log
+/tmp/
+
+# 環境變數
+.env
+.env.local
+
+# Claude Code 本機個人設定（保留可共用的 launch.json）
+.claude/settings.local.json
