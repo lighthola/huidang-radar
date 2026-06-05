@@ -71,7 +71,13 @@ export function useWatchlist({ marketOf, setMarket }) {
 
   function addStock(stock) {
     if (list.value.some(x => x.code === stock.code)) return;
-    list.value = [...list.value, { ...stock, _loading: true, _err: false }];
+    // 刪除後重加：搜尋結果只有 {code,name,market} 無 high5，但快取可能仍有完整資料。
+    // 若快取完整就先帶入（對齊 buildInitialList），避免 3 年高/下一關卡空白。
+    const c = data[stock.code];
+    const item = (c?.high5 && c?.price)
+      ? { code: stock.code, name: stock.name, ...c, _loading: false, _err: false }
+      : { ...stock, _loading: true, _err: false };
+    list.value = [...list.value, item];
     if (stock.market) setMarket(stock.code, stock.market);
     fetchCodes([stock.code]);
     flash.value = stock.code;
