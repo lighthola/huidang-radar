@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, nextTick } from 'vue';
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import StockRow from './StockRow.vue';
 
 const props = defineProps({
@@ -57,7 +57,7 @@ const onDown = (e) => {
     x0: e.clientX, y0: e.clientY, t0: Date.now(),
     rowId: rowEl ? rowEl.getAttribute('data-row-id') : null,
     scroll0: scrollRef.value.scrollTop,
-    mode: null, pointerId: e.pointerId,
+    mode: null, pointerId: e.pointerId, pointerType: e.pointerType,
   };
   clearLP();
   if (g.rowId) {
@@ -75,7 +75,8 @@ const onMove = (e) => {
     if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8 && s.rowId) {
       s.mode = 'swipe';
       try { scrollRef.value.setPointerCapture(s.pointerId); } catch (_) {}
-    } else if (dy > 0 && atTop && !props.refreshing) {
+    } else if (dy > 0 && atTop && !props.refreshing && s.pointerType !== 'touch') {
+      // 觸控的下拉改由非被動 touch 事件處理（見下方）；這裡只服務滑鼠/觸控筆
       s.mode = 'pull';
       try { scrollRef.value.setPointerCapture(s.pointerId); } catch (_) {}
     } else {
@@ -158,6 +159,62 @@ watch([() => props.list, openId, draggingId], async () => {
     const el = faceOf(s.code);
     if (el) { el.style.transition = 'transform .22s cubic-bezier(.2,.8,.2,1)'; el.style.transform = `translateX(${x}px)`; }
   });
+});
+
+// ── 觸控下拉更新 ───────────────────────────────────────────
+// touch-action: pan-y 會把垂直手勢交給瀏覽器，pointer 事件來不及攔截，
+// 故下拉改用「非被動 touchmove + preventDefault」直接接管（標準 pull-to-refresh 技巧）
+let pullStartY = null;
+let pulling = false;
+
+const onTouchStart = (e) => {
+  if (e.touches.length !== 1 || !scrollRef.value) { pullStartY = null; return; }
+  // 僅在頂端、非刷新中、非拖曳中才準備下拉
+  if (scrollRef.value.scrollTop <= 0.5 && !props.refreshing && !draggingId.value) {
+    pullStartY = e.touches[0].clientY;
+    pulling = false;
+  } else {
+    pullStartY = null;
+  }
+};
+
+const onTouchMove = (e) => {
+  if (pullStartY == null || e.touches.length !== 1 || !scrollRef.value) return;
+  const dy = e.touches[0].clientY - pullStartY;
+  if (dy <= 0) {                          // 往上 → 不是下拉，交還原生捲動
+    if (pulling) { pulling = false; pull.value = 0; }
+    return;
+  }
+  if (scrollRef.value.scrollTop <= 0.5) { // 仍在頂端且往下 → 接管為下拉
+    pulling = true;
+    if (e.cancelable) e.preventDefault();  // 非被動監聽 → 確實擋住原生捲動/overscroll
+    pull.value = Math.max(0, Math.min(110, dy * 0.55));
+  }
+};
+
+const onTouchEnd = () => {
+  if (pullStartY == null) return;
+  if (pulling && pull.value >= 62) emit('pulled');
+  pullStartY = null;
+  pulling = false;
+  pull.value = 0;
+};
+
+onMounted(() => {
+  const el = scrollRef.value;
+  if (!el) return;
+  el.addEventListener('touchstart', onTouchStart, { passive: true });
+  el.addEventListener('touchmove', onTouchMove, { passive: false });  // 關鍵：非被動
+  el.addEventListener('touchend', onTouchEnd, { passive: true });
+  el.addEventListener('touchcancel', onTouchEnd, { passive: true });
+});
+onUnmounted(() => {
+  const el = scrollRef.value;
+  if (!el) return;
+  el.removeEventListener('touchstart', onTouchStart);
+  el.removeEventListener('touchmove', onTouchMove);
+  el.removeEventListener('touchend', onTouchEnd);
+  el.removeEventListener('touchcancel', onTouchEnd);
 });
 </script>
 
