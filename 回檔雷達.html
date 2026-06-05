@@ -369,6 +369,30 @@
     function loadSavedList() { return lsGet(LS_LIST); }
     function saveList(list)  { lsSet(LS_LIST, list.map(({ code, name }) => ({ code, name }))); }
 
+    // 從 chart result 取現價與今日漲跌
+    // 優先用 meta.regularMarketPrice（最即時報價）；當日日線 bar 為 null 時，
+    // 避免「從尾端找第一個非空收盤」誤抓到更舊的昨收（例：0050 抓成 107.60）
+    function currentQuote(r) {
+      const meta   = r.meta || {};
+      const closes = r.indicators?.quote?.[0]?.close || [];
+      // 日線最後兩筆有效收盤
+      let lastClose = null, prevClose = null, cnt = 0;
+      for (let i = closes.length - 1; i >= 0; i--) {
+        if (closes[i] != null) {
+          if (cnt === 0) lastClose = +closes[i].toFixed(2);
+          else if (cnt === 1) { prevClose = +closes[i].toFixed(2); break; }
+          cnt++;
+        }
+      }
+      const price = +Number(meta.regularMarketPrice ?? lastClose ?? 0).toFixed(2);
+      // 現價==最後日線收盤 → 當日 bar 已含現價，昨收取前一筆；
+      // 否則現價比日線更新（當日 bar 還沒進來），昨收即最後一筆日線收盤
+      const sameDay = lastClose != null && Math.abs(price - lastClose) < 0.005;
+      const prev    = sameDay ? prevClose : lastClose;
+      const day     = prev ? +((price - prev) / prev * 100).toFixed(2) : 0;
+      return { price, day };
+    }
+
     // 3 年日線資料 → high5（還原股價）、hd、現價、今日漲跌
     async function fetchFull(code) {
       const res = await fetch(`${API_BASE}/${code}.TW?range=3y&interval=1d`);
@@ -398,17 +422,8 @@
       const dt = new Date(ts[hIdx] * 1000);
       const hd = `${dt.getFullYear()}/${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}`;
 
-      // 最新收盤 + 今日漲跌
-      let price = 0, prev = 0, cnt = 0;
-      for (let i = closes.length - 1; i >= 0; i--) {
-        if (closes[i] !== null) {
-          if (cnt === 0) price = closes[i];
-          else if (cnt === 1) { prev = closes[i]; break; }
-          cnt++;
-        }
-      }
-      price = +price.toFixed(2);
-      const day = prev ? +((price - prev) / prev * 100).toFixed(2) : 0;
+      // 現價 + 今日漲跌（優先即時報價）
+      const { price, day } = currentQuote(r);
 
       return { high5, hd, price, day, _full3yAt: Date.now() };
     }
@@ -422,18 +437,7 @@
       const r = json.chart.result[0];
       if (!r) throw new Error('no data');
 
-      const closes = r.indicators.quote[0].close;
-      let price = 0, prev = 0, cnt = 0;
-      for (let i = closes.length - 1; i >= 0; i--) {
-        if (closes[i] !== null) {
-          if (cnt === 0) price = closes[i];
-          else if (cnt === 1) { prev = closes[i]; break; }
-          cnt++;
-        }
-      }
-      price = +price.toFixed(2);
-      const day = prev ? +((price - prev) / prev * 100).toFixed(2) : 0;
-      return { price, day };
+      return currentQuote(r);
     }
 
     // 從 Yahoo Finance 取得股票名稱（供直接新增未知代號使用）
@@ -462,41 +466,42 @@
     const DAY_MS       = 24 * 60 * 60 * 1000;
 
     // 從官方 OpenAPI 抓取 → { list: 完整清單, hot: 前日熱門前10 }
+    // 每檔記錄 market（tse=上市 / otc=上櫃），供即時報價 API 帶前綴用
     async function fetchStockData() {
       const [twse, tpex] = await Promise.allSettled([
         fetch('/api/twse-list').then(r => r.ok ? r.json() : []),
         fetch('/api/tpex-list').then(r => r.ok ? r.json() : []),
       ]);
       const all = [], seen = new Set();
-      const push = (code, name, val) => {
+      const push = (code, name, val, market) => {
         code = String(code || '').trim();
         name = String(name || '').trim();
         if (code && name && !seen.has(code)) {
           seen.add(code);
-          all.push({ code, name, val: Number(val) || 0 });
+          all.push({ code, name, market, val: Number(val) || 0 });
         }
       };
-      // TWSE：TradeValue 成交金額 ／ TPEx：TransactionAmount 成交金額
+      // TWSE：TradeValue 成交金額（上市）／ TPEx：TransactionAmount 成交金額（上櫃）
       if (twse.status === 'fulfilled' && Array.isArray(twse.value))
-        twse.value.forEach(x => push(x.Code, x.Name, x.TradeValue));
+        twse.value.forEach(x => push(x.Code, x.Name, x.TradeValue, 'tse'));
       if (tpex.status === 'fulfilled' && Array.isArray(tpex.value))
-        tpex.value.forEach(x => push(x.SecuritiesCompanyCode, x.CompanyName, x.TransactionAmount));
+        tpex.value.forEach(x => push(x.SecuritiesCompanyCode, x.CompanyName, x.TransactionAmount, 'otc'));
 
-      const list = all.map(({ code, name }) => ({ code, name }));
+      const list = all.map(({ code, name, market }) => ({ code, name, market }));
       const hot  = all.slice()
         .sort((a, b) => b.val - a.val)
         .slice(0, 10)
-        .map(({ code, name }) => ({ code, name }));
+        .map(({ code, name, market }) => ({ code, name, market }));
       return { list, hot };
     }
 
-    // 載入：優先用每日快取，過期或無快取才重新抓取
+    // 載入：優先用每日快取，過期、無快取、或舊版缺 market 欄位時才重新抓取
     async function loadStockData() {
       const cachedList = lsGet(LS_STOCKS);
       const cachedHot  = lsGet(LS_HOT) || [];
       const at         = lsGet(LS_STOCKS_AT) || 0;
-      if (cachedList?.length && (Date.now() - at < DAY_MS))
-        return { list: cachedList, hot: cachedHot };
+      const cacheOk    = cachedList?.length && cachedList[0].market && (Date.now() - at < DAY_MS);
+      if (cacheOk) return { list: cachedList, hot: cachedHot };
       try {
         const fresh = await fetchStockData();
         if (fresh.list.length) {
@@ -507,6 +512,41 @@
         }
       } catch {}
       return { list: cachedList || [], hot: cachedHot };
+    }
+
+    // ── 證交所 MIS 即時報價 ───────────────────────────────────
+    // 取價優先序：成交價 z → 上次成交 pz → 買賣價中點 → 開盤 o → 昨收 y
+    function parseMisQuote(s) {
+      const num = v => { const n = parseFloat(v); return isFinite(n) && n > 0 ? n : null; };
+      const z    = num(s.z);
+      const pz   = num(s.pz);
+      const bid  = num((s.b || '').split('_')[0]);
+      const ask  = num((s.a || '').split('_')[0]);
+      const open = num(s.o);
+      const prev = num(s.y);  // 昨收
+      let price = z ?? pz;
+      if (price == null && bid != null && ask != null) price = (bid + ask) / 2;
+      if (price == null) price = bid ?? ask ?? open ?? prev;
+      if (price == null) return null;
+      price = +price.toFixed(2);
+      const day = prev ? +((price - prev) / prev * 100).toFixed(2) : 0;
+      return { price, day };
+    }
+
+    // 批次即時報價：items = [{ code, market }] → { code: { price, day } }
+    async function fetchQuotes(items) {
+      const valid = items.filter(it => it.market);
+      if (!valid.length) return {};
+      const ids = valid.map(it => `${it.market}_${it.code}.tw`).join('|');
+      const res = await fetch(`/api/quote?ids=${encodeURIComponent(ids)}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json = await res.json();
+      const out = {};
+      (json.msgArray || []).forEach(s => {
+        const q = parseMisQuote(s);
+        if (q) out[s.c] = q;
+      });
+      return out;
     }
 
     // 本地搜尋：代號前綴優先（依代號排序），其次名稱包含
@@ -1048,17 +1088,19 @@
       const [stockList, setStockList] = useState(() => lsGet(LS_STOCKS) || []);
       const [hotList, setHotList]     = useState(() => lsGet(LS_HOT) || []);
       const [listLoading, setListLoading] = useState(false);
-      const dataRef = useRef(loadSavedData());
+      const dataRef   = useRef(loadSavedData());
+      const marketRef = useRef({});                       // code → 'tse' | 'otc'
+      const initialCodesRef = useRef(list.map(s => s.code)); // 掛載時的自選代號
 
-      // 載入台股官方完整清單（供搜尋）與前日熱門前 10，每日快取
-      useEffect(() => {
-        let alive = true;
-        setListLoading(true);
-        loadStockData().then(({ list, hot }) => {
-          if (alive) { setStockList(list); setHotList(hot); setListLoading(false); }
-        });
-        return () => { alive = false; };
-      }, []);
+      // 由清單建立 code→market 對照
+      const buildMarketMap = (arr) => {
+        const m = {};
+        for (const s of arr) if (s.market) m[s.code] = s.market;
+        return m;
+      };
+      // 初始即先用快取清單建立對照（返訪使用者可立即用 MIS）
+      if (Object.keys(marketRef.current).length === 0)
+        marketRef.current = buildMarketMap(stockList);
 
       // 更新單一股票資料並寫入快取
       const updateStock = useCallback((code, patch) => {
@@ -1074,24 +1116,55 @@
       }, []);
 
       // 對一組 code 抓取資料
-      const fetchCodes = useCallback((codes) => {
-        return Promise.allSettled(codes.map(code => {
-          const cached = dataRef.current[code];
-          const needFull = !cached?.high5 || (Date.now() - (cached._full3yAt || 0) > WEEK_MS);
-          const fn = needFull ? fetchFull : fetchPrice;
-          return fn(code)
-            .then(d => updateStock(code, d))
-            .catch(() => markErr(code));
-        }));
+      // 1) 需要 3 年高點者：Yahoo fetchFull（high5、hd，附帶後備現價）
+      // 2) 全部：證交所 MIS 批次即時報價，覆蓋現價/漲跌
+      // 3) MIS 未涵蓋（無 market）且非 full：Yahoo fetchPrice 後備
+      const fetchCodes = useCallback(async (codes) => {
+        if (!codes.length) return;
+
+        // 1) 3 年高點（Yahoo，每週快取）
+        const fulls = codes.filter(code => {
+          const c = dataRef.current[code];
+          return !c?.high5 || (Date.now() - (c._full3yAt || 0) > WEEK_MS);
+        });
+        await Promise.allSettled(fulls.map(code =>
+          fetchFull(code).then(d => updateStock(code, d)).catch(() => markErr(code))
+        ));
+
+        // 2) MIS 批次即時報價
+        const withMkt = codes
+          .map(code => ({ code, market: marketRef.current[code] }))
+          .filter(it => it.market);
+        let quotes = {};
+        if (withMkt.length) {
+          try { quotes = await fetchQuotes(withMkt); } catch {}
+        }
+        Object.entries(quotes).forEach(([code, q]) => updateStock(code, q));
+
+        // 3) Yahoo fetchPrice 後備（MIS 沒回且非 full 者）
+        const got  = new Set(Object.keys(quotes));
+        const rest = codes.filter(code => !got.has(code) && !fulls.includes(code));
+        await Promise.allSettled(rest.map(code =>
+          fetchPrice(code).then(d => updateStock(code, d)).catch(() => markErr(code))
+        ));
       }, [updateStock, markErr]);
 
       // 儲存清單順序
       useEffect(() => { saveList(list); }, [list]);
 
-      // 初始載入：抓取所有需要更新的股票
+      // 掛載：載入官方清單（含 market）→ 建立對照 → 抓自選股報價（含 MIS 即時）
       useEffect(() => {
-        const codes = list.map(s => s.code);
-        fetchCodes(codes);
+        let alive = true;
+        setListLoading(true);
+        loadStockData().then(({ list: sl, hot }) => {
+          if (!alive) return;
+          marketRef.current = buildMarketMap(sl);
+          setStockList(sl);
+          setHotList(hot);
+          setListLoading(false);
+          fetchCodes(initialCodesRef.current);
+        });
+        return () => { alive = false; };
       }, []); // 只執行一次
 
       // 手動 / 自動刷新
@@ -1120,16 +1193,15 @@
           if (prev.some(x => x.code === stock.code)) return prev;
           return [...prev, { ...stock, _loading: true, _err: false }];
         });
+        // 搜尋結果帶有 market，補進對照表（供 MIS 即時報價）
+        if (stock.market && !marketRef.current[stock.code])
+          marketRef.current[stock.code] = stock.market;
 
-        const cached = dataRef.current[stock.code];
-        const needFull = !cached?.high5 || (Date.now() - (cached._full3yAt || 0) > WEEK_MS);
-        (needFull ? fetchFull(stock.code) : fetchPrice(stock.code))
-          .then(d => updateStock(stock.code, d))
-          .catch(() => markErr(stock.code));
+        fetchCodes([stock.code]);
 
         setFlash(stock.code);
         setTimeout(() => setFlash(null), 1400);
-      }, [updateStock, markErr]);
+      }, [fetchCodes]);
 
       const codes = new Set(list.map(x => x.code));
 

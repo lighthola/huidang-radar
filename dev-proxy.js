@@ -79,6 +79,36 @@ function proxyExternal(targetUrl, res) {
   });
 }
 
+// ── 證交所 MIS 即時報價（基本市況報導，需 Referer 防盜連）──
+function proxyMis(ids, res) {
+  const target = `https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=${encodeURIComponent(ids)}&json=1&delay=0`;
+
+  const req = https.get(target, {
+    headers: {
+      'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
+      'Accept':     'application/json',
+      'Referer':    'https://mis.twse.com.tw/stock/fibest.jsp',
+    },
+  }, (up) => {
+    cors(res);
+    res.writeHead(up.statusCode, { 'Content-Type': 'application/json; charset=utf-8' });
+    up.pipe(res);
+  });
+
+  req.on('error', (err) => {
+    cors(res);
+    res.writeHead(502, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: err.message }));
+  });
+
+  req.setTimeout(12000, () => {
+    req.destroy();
+    cors(res);
+    res.writeHead(504, { 'Content-Type': 'application/json' });
+    res.end(JSON.stringify({ error: 'timeout' }));
+  });
+}
+
 // 台股官方清單來源
 const TWSE_LIST = 'https://openapi.twse.com.tw/v1/exchangeReport/STOCK_DAY_ALL';     // 上市
 const TPEX_LIST = 'https://www.tpex.org.tw/openapi/v1/tpex_mainboard_quotes';        // 上櫃
@@ -112,6 +142,9 @@ const server = http.createServer((req, res) => {
   // 台股官方清單：上市 / 上櫃
   if (pathname === '/api/twse-list') { proxyExternal(TWSE_LIST, res); return; }
   if (pathname === '/api/tpex-list') { proxyExternal(TPEX_LIST, res); return; }
+
+  // 證交所即時報價：/api/quote?ids=tse_2330.tw|otc_6488.tw
+  if (pathname === '/api/quote') { proxyMis(parsed.query.ids || '', res); return; }
 
   // Yahoo Finance proxy：/api/chart/:symbol
   // 例：/api/chart/2330.TW?range=3y&interval=1d
