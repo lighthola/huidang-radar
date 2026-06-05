@@ -1,6 +1,11 @@
 # 依賴
 node_modules/
 
+# 建置產物
+dist/
+dev-dist/
+.vite/
+
 # 系統檔
 .DS_Store
 Thumbs.db
