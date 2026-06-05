@@ -22,7 +22,7 @@ let lp = null;                           // 長按計時器
 watch(() => props.list, (v) => { order = v.slice(); });
 
 const faceOf = (id) =>
-  scrollRef.value && scrollRef.value.querySelector(`[data-row-id="${id}"] .row-face`);
+  scrollRef.value && scrollRef.value.querySelector(`[data-row-id="${CSS.escape(id)}"] .row-face`);
 
 const ROWH = () => {
   const el = faceOf(order[0]?.code);

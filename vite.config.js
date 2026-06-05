@@ -10,6 +10,12 @@ const apiProxyPlugin = {
     server.middlewares.use((req, res, next) => {
       if (req.url && req.url.startsWith('/api/')) {
         if (route(req, res)) return;
+        // 未匹配的 /api 路徑：回乾淨 404（與 Vercel function 一致），
+        // 避免 fall through 到 SPA fallback 回傳 index.html(200 HTML)
+        res.statusCode = 404;
+        res.setHeader('Content-Type', 'application/json');
+        res.end(JSON.stringify({ error: 'Not Found' }));
+        return;
       }
       next();
     });

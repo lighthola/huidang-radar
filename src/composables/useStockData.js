@@ -1,5 +1,5 @@
 import { ref } from 'vue';
-import { loadStockData, cachedStockList, cachedHotList, searchStocks } from '../api/index.js';
+import { loadStockData, cachedStockList, cachedHotList } from '../api/index.js';
 
 function buildMarketMap(arr) {
   const m = {};
@@ -29,7 +29,6 @@ export function useStockData() {
   const setMarket = (code, market) => {
     if (market && !marketMap.value[code]) marketMap.value[code] = market;
   };
-  const search = (q) => searchStocks(stockList.value, q);
 
-  return { stockList, hotList, listLoading, marketMap, marketOf, setMarket, search, load };
+  return { stockList, hotList, listLoading, marketOf, setMarket, load };
 }

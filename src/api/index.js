@@ -165,7 +165,7 @@ export async function loadStockData() {
   const cachedList = lsGet(LS_STOCKS);
   const cachedHot  = lsGet(LS_HOT) || [];
   const at         = lsGet(LS_STOCKS_AT) || 0;
-  const cacheOk    = cachedList?.length && cachedList[0].market && (Date.now() - at < DAY_MS);
+  const cacheOk    = cachedList?.length && cachedList[0]?.market && (Date.now() - at < DAY_MS);
   if (cacheOk) return { list: cachedList, hot: cachedHot };
   try {
     const fresh = await fetchStockData();
