@@ -38,9 +38,14 @@ export function currentQuote(r) {
   return { price, day };
 }
 
+// Yahoo Finance 代號後綴：上市 .TW、上櫃 .TWO
+function yahooSymbol(code, market) {
+  return code + (market === 'otc' ? '.TWO' : '.TW');
+}
+
 // 3 年日線資料 → high5（還原股價）、hd、現價、今日漲跌
-export async function fetchFull(code) {
-  const res = await fetch(`${API_BASE}?symbol=${code}.TW&range=3y&interval=1d`);
+export async function fetchFull(code, market) {
+  const res = await fetch(`${API_BASE}?symbol=${yahooSymbol(code, market)}&range=3y&interval=1d`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (json.chart?.error) throw new Error(json.chart.error.description || 'API error');
@@ -70,8 +75,8 @@ export async function fetchFull(code) {
 }
 
 // 5 日資料 → 現價 + 今日漲跌（Yahoo 後備）
-export async function fetchPrice(code) {
-  const res = await fetch(`${API_BASE}?symbol=${code}.TW&range=5d&interval=1d`);
+export async function fetchPrice(code, market) {
+  const res = await fetch(`${API_BASE}?symbol=${yahooSymbol(code, market)}&range=5d&interval=1d`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (json.chart?.error) throw new Error(json.chart.error.description || 'API error');
@@ -81,19 +86,25 @@ export async function fetchPrice(code) {
 }
 
 // 從 Yahoo 取得股票名稱（直接新增未知代號用）
+// 市場別未知 → 先試上市 .TW，再試上櫃 .TWO；回傳判定的 market 供後續即時報價用
 export async function fetchStockMeta(code) {
-  const res = await fetch(`${API_BASE}?symbol=${code}.TW&range=1d&interval=1d`);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  const json = await res.json();
-  if (json.chart?.error) throw new Error('找不到此代號');
-  const r = json.chart?.result?.[0];
-  if (!r) throw new Error('no data');
-  const short = r.meta.shortName || '';
-  const long  = r.meta.longName  || '';
-  const looksLikeMgmt = /management|asset|co\.?\s*ltd|securities/i.test(short);
-  const raw = (!looksLikeMgmt && short) ? short : (long || short || code);
-  const name = raw.replace(/\s+(Co\.,?\s*Ltd\.?|Inc\.?|Corp\.?)$/i, '').trim() || code;
-  return { code, name };
+  for (const [suffix, market] of [['.TW', 'tse'], ['.TWO', 'otc']]) {
+    try {
+      const res = await fetch(`${API_BASE}?symbol=${code}${suffix}&range=1d&interval=1d`);
+      if (!res.ok) continue;
+      const json = await res.json();
+      if (json.chart?.error) continue;
+      const r = json.chart?.result?.[0];
+      if (!r) continue;
+      const short = r.meta.shortName || '';
+      const long  = r.meta.longName  || '';
+      const looksLikeMgmt = /management|asset|co\.?\s*ltd|securities/i.test(short);
+      const raw = (!looksLikeMgmt && short) ? short : (long || short || code);
+      const name = raw.replace(/\s+(Co\.,?\s*Ltd\.?|Inc\.?|Corp\.?)$/i, '').trim() || code;
+      return { code, name, market };
+    } catch { /* 試下一個後綴 */ }
+  }
+  throw new Error('找不到此代號');
 }
 
 // ── 證交所 MIS 即時報價 ───────────────────────────────────

@@ -42,7 +42,7 @@ export function useWatchlist({ marketOf, setMarket }) {
       return !c?.high5 || (Date.now() - (c._full3yAt || 0) > WEEK_MS);
     });
     await Promise.allSettled(fulls.map(code =>
-      fetchFull(code).then(d => updateStock(code, d)).catch(() => markErr(code))
+      fetchFull(code, marketOf(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
     ));
 
     const withMkt = codes
@@ -57,7 +57,7 @@ export function useWatchlist({ marketOf, setMarket }) {
     const got  = new Set(Object.keys(quotes));
     const rest = codes.filter(code => !got.has(code) && !fulls.includes(code));
     await Promise.allSettled(rest.map(code =>
-      fetchPrice(code).then(d => updateStock(code, d)).catch(() => markErr(code))
+      fetchPrice(code, marketOf(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
     ));
   }
 
