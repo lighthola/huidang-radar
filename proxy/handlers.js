@@ -59,11 +59,13 @@ export function route(req, res) {
     return true;
   }
 
-  // Yahoo Finance：/api/chart/{symbol}?...
-  const chart = pathname.match(/^\/api\/chart\/(.+)$/);
-  if (chart) {
-    const symbol = chart[1];
-    const qs = url.search ? url.search.slice(1) : '';
+  // Yahoo Finance：/api/chart?symbol=0050.TW&range=...&interval=...
+  // symbol 放查詢參數（非路徑），避免 Vercel 對多段路徑 / 含點路徑的攔截
+  if (pathname === '/api/chart') {
+    const symbol   = url.searchParams.get('symbol') || '';
+    const range    = url.searchParams.get('range') || '1d';
+    const interval = url.searchParams.get('interval') || '1d';
+    const qs = `range=${encodeURIComponent(range)}&interval=${encodeURIComponent(interval)}`;
     pipeGet(`https://${YAHOO}/v8/finance/chart/${encodeURIComponent(symbol)}?${qs}`, res);
     return true;
   }

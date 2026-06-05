@@ -40,7 +40,7 @@ export function currentQuote(r) {
 
 // 3 年日線資料 → high5（還原股價）、hd、現價、今日漲跌
 export async function fetchFull(code) {
-  const res = await fetch(`${API_BASE}/${code}.TW?range=3y&interval=1d`);
+  const res = await fetch(`${API_BASE}?symbol=${code}.TW&range=3y&interval=1d`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (json.chart?.error) throw new Error(json.chart.error.description || 'API error');
@@ -71,7 +71,7 @@ export async function fetchFull(code) {
 
 // 5 日資料 → 現價 + 今日漲跌（Yahoo 後備）
 export async function fetchPrice(code) {
-  const res = await fetch(`${API_BASE}/${code}.TW?range=5d&interval=1d`);
+  const res = await fetch(`${API_BASE}?symbol=${code}.TW&range=5d&interval=1d`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (json.chart?.error) throw new Error(json.chart.error.description || 'API error');
@@ -82,7 +82,7 @@ export async function fetchPrice(code) {
 
 // 從 Yahoo 取得股票名稱（直接新增未知代號用）
 export async function fetchStockMeta(code) {
-  const res = await fetch(`${API_BASE}/${code}.TW?range=1d&interval=1d`);
+  const res = await fetch(`${API_BASE}?symbol=${code}.TW&range=1d&interval=1d`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   if (json.chart?.error) throw new Error('找不到此代號');
