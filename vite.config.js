@@ -9,12 +9,23 @@ const apiProxyPlugin = {
   configureServer(server) {
     server.middlewares.use((req, res, next) => {
       if (req.url && req.url.startsWith('/api/')) {
-        if (route(req, res)) return;
-        // 未匹配的 /api 路徑：回乾淨 404（與 Vercel function 一致），
-        // 避免 fall through 到 SPA fallback 回傳 index.html(200 HTML)
-        res.statusCode = 404;
-        res.setHeader('Content-Type', 'application/json');
-        res.end(JSON.stringify({ error: 'Not Found' }));
+        try {
+          if (route(req, res)) return;
+          // 未匹配的 /api 路徑：回乾淨 404（與 Vercel function 一致），
+          // 避免 fall through 到 SPA fallback 回傳 index.html(200 HTML)
+          res.statusCode = 404;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Not Found' }));
+        } catch (err) {
+          // 同步例外不可冒泡（否則整個 dev server 崩潰退出）。header 未送出才回 500。
+          if (!res.headersSent && !res.writableEnded) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: err && err.message ? err.message : 'Internal Error' }));
+          } else if (!res.writableEnded) {
+            res.end();
+          }
+        }
         return;
       }
       next();
