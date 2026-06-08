@@ -23,6 +23,25 @@ function cors(res) {
 
 // 向目標發出 server-side GET，串流回應
 function pipeGet(targetUrl, res, extraHeaders = {}) {
+  // 是否已決定回應（成功開始串流，或已送出錯誤）。timeout 與 'error' 可能接連觸發
+  // （req.destroy() 會引發 'error'），用此旗標避免對同一回應重複下決定。
+  let settled = false;
+
+  // 安全送出錯誤回應：若 header 已送出（已開始串流上游內容）或回應已結束，
+  // 就不可再 setHeader/writeHead（會丟 ERR_HTTP_HEADERS_SENT 而崩潰 dev server），
+  // 此時只確保把回應收尾。
+  const fail = (status, message) => {
+    if (settled) return;
+    settled = true;
+    if (res.headersSent || res.writableEnded) {
+      if (!res.writableEnded) res.end();
+      return;
+    }
+    cors(res);
+    res.writeHead(status, { 'Content-Type': 'application/json; charset=utf-8' });
+    res.end(JSON.stringify({ error: message }));
+  };
+
   const req = https.get(targetUrl, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)',
@@ -30,20 +49,22 @@ function pipeGet(targetUrl, res, extraHeaders = {}) {
       ...extraHeaders,
     },
   }, (up) => {
+    // 若已逾時/出錯先一步決定回應，丟棄遲到的上游回應並排空，避免 socket 洩漏
+    if (settled) { up.resume(); return; }
+    settled = true;
     cors(res);
     res.writeHead(up.statusCode || 502, { 'Content-Type': 'application/json; charset=utf-8' });
+    // 串流過程中上游中斷：header 已送出，只能中止回應，不可再 writeHead
+    up.on('error', () => { if (!res.writableEnded) res.end(); });
     up.pipe(res);
   });
-  req.on('error', (err) => {
-    cors(res);
-    res.writeHead(502, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: err.message }));
-  });
+
+  req.on('error', (err) => fail(502, err.message));
   req.setTimeout(15000, () => {
+    // 先送出 504（此時 settled 仍為 false），再 destroy；destroy 引發的 'error'
+    // 會因 settled 已為 true 而被 fail() 忽略。
+    fail(504, 'timeout');
     req.destroy();
-    cors(res);
-    res.writeHead(504, { 'Content-Type': 'application/json' });
-    res.end(JSON.stringify({ error: 'timeout' }));
   });
 }
 
