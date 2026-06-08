@@ -7,7 +7,11 @@ const props = defineProps({
   refreshing: { type: Boolean, default: false },
   flashId:    { type: String, default: null },
 });
-const emit = defineEmits(['update:list', 'pulled']);
+const emit = defineEmits(['update:list', 'pulled', 'scroll']);
+
+const onNativeScroll = () => {
+  if (scrollRef.value) emit('scroll', scrollRef.value.scrollTop);
+};
 
 const expandedId = ref(null);
 const openId     = ref(null);
@@ -221,6 +225,7 @@ onUnmounted(() => {
 <template>
   <div class="scroll" ref="scrollRef"
        :style="{ overflowY: (draggingId || pull) ? 'hidden' : 'auto' }"
+       @scroll="onNativeScroll"
        @pointerdown="onDown" @pointermove="onMove"
        @pointerup="onUp" @pointercancel="onUp">
     <div class="ptr" :style="{ height: pull + 'px', opacity: pull / 70 }">

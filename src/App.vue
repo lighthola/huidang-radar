@@ -18,6 +18,16 @@ const { list, refreshing, flash, fetchCodes, refresh, addStock, setList } = wl;
 const now        = ref(new Date());
 const searchOpen = ref(false);
 
+// 標題列（品牌列）隨捲動收合；狀態列恆顯示，點擊狀態列可展回標題列
+const brandHidden = ref(false);
+let lastScrollTop = 0;
+function onListScroll(top) {
+  if (top <= 4) brandHidden.value = false;             // 回到頂端 → 顯示
+  else if (top > lastScrollTop && top > 44) brandHidden.value = true; // 往下捲 → 收合
+  lastScrollTop = top;
+}
+function revealBrand() { brandHidden.value = false; }
+
 const inList = computed(() => new Set(list.value.map(x => x.code)));
 
 function doRefresh() {
@@ -41,7 +51,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
 
 <template>
   <div class="app">
-    <header class="appbar">
+    <header class="appbar" :class="{ 'brand-collapsed': brandHidden }">
       <div class="appbar-row">
         <div class="brand">
           <span class="brand-mark"><span class="bm-dot" /></span>
@@ -51,7 +61,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
           <Icon name="plus" :size="18" :sw="2.6" stroke="#fff" />
         </button>
       </div>
-      <StatusBar :now="now" />
+      <StatusBar :now="now" :collapsed="brandHidden" @click="revealBrand" />
     </header>
 
     <EmptyState v-if="list.length === 0" @add="searchOpen = true" />
@@ -60,6 +70,7 @@ onUnmounted(() => { if (timer) clearInterval(timer); });
                :refreshing="refreshing"
                :flash-id="flash"
                @update:list="setList"
+               @scroll="onListScroll"
                @pulled="doRefresh" />
 
     <SearchSheet v-if="searchOpen"
