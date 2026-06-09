@@ -219,10 +219,10 @@ html, body {
 /* 來源列：僅在分享圖片中出現（即時畫面預設隱藏，由 composable 於 clone 開啟）。
    app 名稱 + 時間並排、整組靠右（由 .share-bar 的 flex-end 推到右側） */
 .share-credit {
-  display: none; align-items: baseline; gap: 7px;
+  display: none; align-items: baseline; gap: 7px; flex-shrink: 0;
 }
-.sf-brand { font-size: 11px; font-weight: 600; color: var(--text-2); letter-spacing: .4px; }
-.sf-time { font-family: var(--mono); font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.sf-brand { font-size: 11px; font-weight: 600; color: var(--text-2); letter-spacing: .4px; white-space: nowrap; }
+.sf-time { font-family: var(--mono); font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
 
 .list-foot {
   text-align: center; color: var(--text-3); font-size: 11px;
