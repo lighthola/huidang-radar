@@ -55,7 +55,7 @@ const startDrag = () => {
 };
 
 const onDown = (e) => {
-  if (e.target.closest('.row-delete') || e.target.closest('.ext-link')) { g = {}; return; }
+  if (e.target.closest('.row-delete') || e.target.closest('.ext-link') || e.target.closest('.share-btn')) { g = {}; return; }
   const rowEl = e.target.closest('[data-row-id]');
   g = {
     x0: e.clientX, y0: e.clientY, t0: Date.now(),
