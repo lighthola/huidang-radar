@@ -1,7 +1,12 @@
 <script setup>
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import Icon from './Icon.vue';
+import { useShareCard } from '../composables/useShareCard.js';
 import { retracement, severity, nextLevel, fmt, fmtPct, SEV_COLOR } from '../utils/format.js';
+
+const { sharing, shareRow } = useShareCard();
+const faceRef = ref(null);
+const onShare = () => shareRow(faceRef.value, props.stock.code);
 
 const props = defineProps({
   stock:    { type: Object, required: true },
@@ -32,7 +37,7 @@ const dayColor = computed(() =>
     <div class="row-delete">
       <span><Icon name="trash" :size="18" :sw="1.9" /> 刪除</span>
     </div>
-    <div class="row-face">
+    <div class="row-face" ref="faceRef">
       <div class="row-top">
         <span class="drag-grip"><Icon name="grip" :size="18" stroke="var(--text-3)" /></span>
 
@@ -102,6 +107,20 @@ const dayColor = computed(() =>
                 :class="{ passed: mag >= l - 1e-6, next: l === nl.pct }">
             −{{ l }}%
           </span>
+        </div>
+
+        <div class="share-bar">
+          <span class="share-credit" data-share-credit>
+            <span class="sf-brand">回檔雷達</span>
+            <span class="sf-time" data-share-time></span>
+          </span>
+          <button class="share-btn" data-share-btn type="button"
+                  :disabled="sharing"
+                  aria-label="分享此卡片"
+                  @click.stop="onShare">
+            <Icon name="share" :size="15" :sw="1.7" stroke="currentColor" />
+            <span>{{ sharing ? '處理中…' : '分享' }}</span>
+          </button>
         </div>
       </div>
     </div>

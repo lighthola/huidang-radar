@@ -38,6 +38,12 @@ const props = defineProps({
       <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M4 6h12M8 6V4h4v2M6 6l1 10h6l1-10" />
     </template>
 
+    <template v-else-if="name === 'share'">
+      <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M10 3v9" />
+      <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M6.5 6.5L10 3l3.5 3.5" />
+      <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M6 9H4.5a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1v-6a1 1 0 0 0-1-1H14" />
+    </template>
+
     <template v-else-if="name === 'external'">
       <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M9 5H5.5a1 1 0 0 0-1 1v8.5a1 1 0 0 0 1 1H14a1 1 0 0 0 1-1V11" />
       <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M11.5 4.5H15.5V8.5" />

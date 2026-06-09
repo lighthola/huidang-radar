@@ -201,6 +201,29 @@ html, body {
 .lad.passed { background: rgba(255,82,87,0.13); border-color: transparent; color: var(--sev-bad); }
 .lad.next { background: rgba(47,129,247,0.12); border-color: var(--blue); color: var(--blue); font-weight: 600; }
 
+/* 分享列：detail 底部獨立整行、靠右、低調 */
+.share-bar {
+  display: flex; justify-content: flex-end;
+  margin-top: 3px; padding-top: 11px;
+  border-top: 1px solid var(--hair);
+}
+.share-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: none; border: none; padding: 2px 2px;
+  color: var(--text-3); font-family: var(--sans); font-size: 12px; letter-spacing: .3px;
+  cursor: pointer; transition: color .15s;
+}
+.share-btn:active:not(:disabled) { color: var(--blue); }
+.share-btn:disabled { opacity: .55; cursor: default; }
+
+/* 來源列：僅在分享圖片中出現（即時畫面預設隱藏，由 composable 於 clone 開啟）。
+   app 名稱 + 時間並排、整組靠右（由 .share-bar 的 flex-end 推到右側） */
+.share-credit {
+  display: none; align-items: baseline; gap: 7px; flex-shrink: 0;
+}
+.sf-brand { font-size: 11px; font-weight: 600; color: var(--text-2); letter-spacing: .4px; white-space: nowrap; }
+.sf-time { font-family: var(--mono); font-size: 11px; color: var(--text-3); font-variant-numeric: tabular-nums; white-space: nowrap; }
+
 .list-foot {
   text-align: center; color: var(--text-3); font-size: 11px;
   padding: 18px 0 calc(34px + var(--safe-bottom)); letter-spacing: .3px;
