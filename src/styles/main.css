@@ -13,8 +13,8 @@
   --sev-mild: #E8EAED;
   --sev-warn: #FF9500;
   --sev-bad: #FF2D2D;
-  --mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', Menlo, monospace;
-  --sans: 'Noto Sans TC', system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, monospace;
+  --sans: system-ui, -apple-system, 'PingFang TC', 'Microsoft JhengHei', 'Noto Sans TC', sans-serif;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
