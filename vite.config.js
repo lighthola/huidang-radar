@@ -57,13 +57,8 @@ export default defineConfig({
       },
       workbox: {
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
-        // 字型 / API 執行階段快取
+        // API 執行階段快取（字型已改用系統字，無外部字型可快取）
         runtimeCaching: [
-          {
-            urlPattern: ({ url }) => url.origin === 'https://fonts.googleapis.com' || url.origin === 'https://fonts.gstatic.com',
-            handler: 'CacheFirst',
-            options: { cacheName: 'google-fonts', expiration: { maxEntries: 20, maxAgeSeconds: 60 * 60 * 24 * 365 } },
-          },
           {
             // 股票清單：離線時可回退到上次快取
             urlPattern: ({ url }) => url.pathname === '/api/twse-list' || url.pathname === '/api/tpex-list',

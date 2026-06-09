@@ -46,9 +46,8 @@ async function shareRow(faceEl, code) {
     const blob = await toBlob(clone, {
       pixelRatio: 2,
       backgroundColor: '#060708',
-      // 跳過遠端字型嵌入：Google Fonts 為跨來源樣式表，html-to-image 無法讀取其
-      // cssRules（dev/prod 皆然），會丟錯且增加延遲。改用字型堆疊的系統 fallback
-      // （iOS：SF Mono / PingFang），目標裝置上外觀一致且更快、更穩。
+      // app 已改用系統字堆疊（無 web font），系統字本就存在於 SVG 算繪環境、
+      // 不需嵌入；skipFonts 跳過字型嵌入步驟，圖片與 app 用同一套系統字、天生一致。
       skipFonts: true,
     });
     if (!blob) throw new Error('toBlob returned null');
