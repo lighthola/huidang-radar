@@ -35,7 +35,8 @@ export function currentQuote(r) {
   const sameDay = lastClose != null && Math.abs(price - lastClose) < 0.005;
   const prev    = sameDay ? prevClose : lastClose;
   const day     = prev ? +((price - prev) / prev * 100).toFixed(2) : 0;
-  return { price, day };
+  const high    = meta.regularMarketDayHigh > 0 ? +Number(meta.regularMarketDayHigh).toFixed(2) : null;
+  return high != null ? { price, day, high } : { price, day };
 }
 
 // Yahoo Finance 代號後綴：上市 .TW、上櫃 .TWO
@@ -123,7 +124,8 @@ export function parseMisQuote(s) {
   if (price == null) return null;
   price = +price.toFixed(2);
   const day = prev ? +((price - prev) / prev * 100).toFixed(2) : 0;
-  return { price, day };
+  const high = num(s.h);   // 當日盤中最高（突破 3 年高時用於即時上修 high5）
+  return high != null ? { price, day, high } : { price, day };
 }
 
 // 批次即時報價：items = [{ code, market }] → { code: { price, day } }

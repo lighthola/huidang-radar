@@ -16,7 +16,23 @@ export function useWatchlist({ marketOf, setMarket }) {
   // 儲存清單順序
   watch(list, (v) => saveList(v), { deep: false });
 
+  // 今日日期字串（YYYY/MM/DD，與 fetchFull 的 hd 同格式）
+  const todayStr = () => {
+    const d = new Date();
+    return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, '0')}/${String(d.getDate()).padStart(2, '0')}`;
+  };
+
   function updateStock(code, patch) {
+    // 報價可能帶當日盤中最高 high（MIS s.h / Yahoo dayHigh）。3 年高 high5 每週才重抓、
+    // 盤中凍結，個股盤中突破 3 年高時 price 會大於凍結的 high5，使回檔算成正值、下一關卡錯亂。
+    // 故突破時即時上修 high5＝當日盤中最高、並把高點日標記為今日；high 本身不落地，
+    // 正式還原高點待下次 Yahoo 重抓校正。用 s.h（當日累積最高）而非現價，故創高後又跌落也正確。
+    if (patch.high != null) {
+      const { high, ...rest } = patch;
+      const baseHigh = rest.high5 ?? data[code]?.high5 ?? 0;
+      // 僅在「已有已知 3 年高且被突破」時上修；無 3 年高時不以當日高捏造
+      patch = (baseHigh > 0 && high > baseHigh) ? { ...rest, high5: high, hd: todayStr() } : rest;
+    }
     list.value = list.value.map(s =>
       s.code === code ? { ...s, ...patch, _loading: false, _err: false } : s
     );
