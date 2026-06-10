@@ -44,7 +44,7 @@ function yahooSymbol(code, market) {
   return code + (market === 'otc' ? '.TWO' : '.TW');
 }
 
-// 3 年日線資料 → high5（還原股價）、hd、現價、今日漲跌
+// 3 年日線資料 → high3y（還原股價）、hd、現價、今日漲跌
 export async function fetchFull(code, market) {
   const res = await fetch(`${API_BASE}?symbol=${yahooSymbol(code, market)}&range=3y&interval=1d`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -59,20 +59,20 @@ export async function fetchFull(code, market) {
   const highs  = r.indicators.quote[0].high;
 
   // 3 年高點：盤中最高價 × 還原係數（adjclose/close），正確處理分割
-  let high5 = 0, hIdx = 0;
+  let high3y = 0, hIdx = 0;
   for (let i = 0; i < highs.length; i++) {
     if (highs[i] !== null && closes[i] && adjcl[i]) {
       const adjH = highs[i] * (adjcl[i] / closes[i]);
-      if (adjH > high5) { high5 = adjH; hIdx = i; }
+      if (adjH > high3y) { high3y = adjH; hIdx = i; }
     }
   }
-  high5 = +high5.toFixed(2);
+  high3y = +high3y.toFixed(2);
 
   const dt = new Date(ts[hIdx] * 1000);
   const hd = `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
 
   const { price, day } = currentQuote(r);
-  return { high5, hd, price, day, _full3yAt: Date.now() };
+  return { high3y, hd, price, day, _full3yAt: Date.now() };
 }
 
 // 5 日資料 → 現價 + 今日漲跌（Yahoo 後備）
@@ -124,7 +124,7 @@ export function parseMisQuote(s) {
   if (price == null) return null;
   price = +price.toFixed(2);
   const day = prev ? +((price - prev) / prev * 100).toFixed(2) : 0;
-  const high = num(s.h);   // 當日盤中最高（突破 3 年高時用於即時上修 high5）
+  const high = num(s.h);   // 當日盤中最高（突破 3 年高時用於即時上修 high3y）
   return high != null ? { price, day, high } : { price, day };
 }
 
@@ -216,7 +216,7 @@ export function buildInitialList() {
   const data = loadSavedData();
   return saved.map(({ code, name }) => {
     const d = data[code];
-    if (d?.high5 && d?.price) return { code, name, ...d, _loading: false, _err: false };
-    return { code, name, high5: 0, hd: '–', price: 0, day: 0, _loading: true, _err: false };
+    if (d?.high3y && d?.price) return { code, name, ...d, _loading: false, _err: false };
+    return { code, name, high3y: 0, hd: '–', price: 0, day: 0, _loading: true, _err: false };
   });
 }

@@ -8,7 +8,7 @@ export function isTradingHours(d = new Date()) {
 
 // ── 計算輔助函式 ──────────────────────────────────────────
 export function retracement(stock) {
-  return ((stock.price - stock.high5) / stock.high5) * 100;
+  return ((stock.price - stock.high3y) / stock.high3y) * 100;
 }
 
 export function severity(mag) {
@@ -28,7 +28,7 @@ export function nextLevel(stock) {
   let pct = Math.ceil((mag + 1e-9) / 5) * 5;
   if (Math.abs(pct - mag) < 1e-6) pct += 5;
   pct = Math.min(pct, 95);
-  const price = stock.high5 * (1 - pct / 100);
+  const price = stock.high3y * (1 - pct / 100);
   return { pct, price, sev: severity(pct) };
 }
 

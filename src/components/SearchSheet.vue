@@ -44,7 +44,7 @@ async function handleDirectAdd() {
   directLoading.value = true; directErr.value = '';
   try {
     const meta = await fetchStockMeta(query.value);
-    emit('add', { ...meta, high5: 0, hd: '–', price: 0, day: 0 });
+    emit('add', { ...meta, high3y: 0, hd: '–', price: 0, day: 0 });
     added.value = new Set(added.value).add(query.value);
   } catch {
     directErr.value = '找不到此代號，請確認後再試';
