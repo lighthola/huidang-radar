@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import Icon from './Icon.vue';
 import { searchStocks, fetchStockMeta } from '../api/index.js';
 
@@ -21,7 +21,17 @@ onMounted(() => {
   setTimeout(() => inputRef.value && inputRef.value.focus(), 280);
 });
 
-const query   = computed(() => q.value.trim());
+// 搜尋輸入 debounce：避免每個按鍵都對 ~2,370 檔做線性掃描；清空則立即反映（取消搜尋立刻回熱門）
+const query   = ref('');
+let searchTimer = null;
+watch(q, (v) => {
+  clearTimeout(searchTimer);
+  const trimmed = v.trim();
+  if (!trimmed) { query.value = ''; return; }
+  searchTimer = setTimeout(() => { query.value = trimmed; }, 180);
+});
+onUnmounted(() => clearTimeout(searchTimer));
+
 const results = computed(() => query.value ? searchStocks(props.stockList, query.value) : props.popular);
 
 const looksLikeCode = computed(() => /^\d{4,6}[A-Za-z]{0,2}$/.test(query.value));
