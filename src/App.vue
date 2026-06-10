@@ -52,12 +52,21 @@ onMounted(async () => {
   fetchCodes(codes);
 });
 
-// 每 5 分鐘在交易時間內自動刷新
+// 每 5 分鐘在交易時間內自動刷新；切回前景時立即補刷一次
+// （背景分頁的 timer 會被瀏覽器節流/凍結，回前景不補刷會看到舊價）
 let timer = null;
+const onVisible = () => {
+  if (document.visibilityState === 'visible' && isTradingHours()) doRefresh();
+};
 onMounted(() => {
   timer = setInterval(() => { if (isTradingHours()) doRefresh(); }, 5 * 60 * 1000);
+  document.addEventListener('visibilitychange', onVisible);
 });
-onUnmounted(() => { if (timer) clearInterval(timer); if (lockTimer) clearTimeout(lockTimer); });
+onUnmounted(() => {
+  if (timer) clearInterval(timer);
+  if (lockTimer) clearTimeout(lockTimer);
+  document.removeEventListener('visibilitychange', onVisible);
+});
 </script>
 
 <template>
