@@ -144,8 +144,21 @@ export async function fetchQuotes(items) {
   return out;
 }
 
+// 清單是否「上市 + 上櫃」兩市場都齊。缺整個市場的殘缺清單會讓該市場個股
+// marketOf 落空 → fetchFull 退成 .TW（上櫃股 Yahoo chart 回查無資料），故須擋下。
+function hasBothMarkets(list) {
+  let tse = false, otc = false;
+  for (const s of list || []) {
+    if (s.market === 'tse') tse = true;
+    else if (s.market === 'otc') otc = true;
+    if (tse && otc) return true;
+  }
+  return false;
+}
+
 // ── 台股官方完整清單（證交所上市 + 櫃買上櫃）──────────────
 // 每檔含 market（tse/otc）供即時報價帶前綴；附成交金額排序出前日熱門
+// 回傳 complete：兩市場是否都成功（任一市場暫時失敗時為 false，不可落地快取）
 export async function fetchStockData() {
   const [twse, tpex] = await Promise.allSettled([
     fetch('/api/twse-list').then(r => r.ok ? r.json() : []),
@@ -160,34 +173,39 @@ export async function fetchStockData() {
       all.push({ code, name, market, val: Number(val) || 0 });
     }
   };
-  if (twse.status === 'fulfilled' && Array.isArray(twse.value))
-    twse.value.forEach(x => push(x.Code, x.Name, x.TradeValue, 'tse'));
-  if (tpex.status === 'fulfilled' && Array.isArray(tpex.value))
-    tpex.value.forEach(x => push(x.SecuritiesCompanyCode, x.CompanyName, x.TransactionAmount, 'otc'));
+  const tseArr  = twse.status === 'fulfilled' && Array.isArray(twse.value) ? twse.value : [];
+  const tpexArr = tpex.status === 'fulfilled' && Array.isArray(tpex.value) ? tpex.value : [];
+  tseArr.forEach(x => push(x.Code, x.Name, x.TradeValue, 'tse'));
+  tpexArr.forEach(x => push(x.SecuritiesCompanyCode, x.CompanyName, x.TransactionAmount, 'otc'));
 
   const list = all.map(({ code, name, market }) => ({ code, name, market }));
   const hot  = all.slice()
     .sort((a, b) => b.val - a.val)
     .slice(0, 10)
     .map(({ code, name, market }) => ({ code, name, market }));
-  return { list, hot };
+  return { list, hot, complete: tseArr.length > 0 && tpexArr.length > 0 };
 }
 
-// 載入：優先用每日快取，過期 / 無快取 / 舊版缺 market 時重新抓取
+// 載入：優先用每日快取，過期 / 無快取 / 殘缺（缺整個市場）時重新抓取
 export async function loadStockData() {
   const cachedList = lsGet(LS_STOCKS);
   const cachedHot  = lsGet(LS_HOT) || [];
   const at         = lsGet(LS_STOCKS_AT) || 0;
-  const cacheOk    = cachedList?.length && cachedList[0]?.market && (Date.now() - at < DAY_MS);
+  // 兩市場齊全 + 24h 內才採用；殘缺的舊快取一律重抓以自我修復（取代舊的 [0].market 判斷）
+  const cacheOk    = cachedList?.length && hasBothMarkets(cachedList) && (Date.now() - at < DAY_MS);
   if (cacheOk) return { list: cachedList, hot: cachedHot };
   try {
     const fresh = await fetchStockData();
-    if (fresh.list.length) {
+    // 只有兩市場都到齊才落地快取，避免單一市場暫時失敗 → 殘缺清單被服務整天
+    if (fresh.complete) {
       lsSet(LS_STOCKS, fresh.list);
       lsSet(LS_HOT, fresh.hot);
       lsSet(LS_STOCKS_AT, Date.now());
       return fresh;
     }
+    // 部分失敗：優先沿用既有「完整」快取；否則暫用本次部分結果（不落地，下次再試）
+    if (hasBothMarkets(cachedList)) return { list: cachedList, hot: cachedHot };
+    if (fresh.list.length) return fresh;
   } catch {}
   return { list: cachedList || [], hot: cachedHot };
 }
