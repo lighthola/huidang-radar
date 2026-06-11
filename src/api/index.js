@@ -227,14 +227,19 @@ export function searchStocks(list, q) {
   return [...byCode, ...byName].slice(0, 80);
 }
 
+// 依快取把單檔組成可渲染的 list item：快取完整（有 high3y 與 price）就帶入上次數值
+// （_loading:false 直接顯示），否則回歸零 skeleton（_loading:true），待抓回真值覆蓋。
+// buildInitialList（整份）與 addStock（單檔）共用同一份水合邏輯。
+export function hydrateItem(code, name, market, data) {
+  const c = data[code];
+  if (c?.high3y && c?.price) return { code, name, market, ...c, _loading: false, _err: false };
+  return { code, name, market, high3y: 0, hd: '–', price: 0, day: 0, _loading: true, _err: false };
+}
+
 // 初始自選清單：完全來自 localStorage；無清單時回傳空陣列（顯示引導畫面）
 export function buildInitialList() {
   const saved = loadSavedList();
   if (!saved?.length) return [];
   const data = loadSavedData();
-  return saved.map(({ code, name, market }) => {
-    const d = data[code];
-    if (d?.high3y && d?.price) return { code, name, market, ...d, _loading: false, _err: false };
-    return { code, name, market, high3y: 0, hd: '–', price: 0, day: 0, _loading: true, _err: false };
-  });
+  return saved.map(({ code, name, market }) => hydrateItem(code, name, market, data));
 }

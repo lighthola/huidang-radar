@@ -1,6 +1,6 @@
 import { ref, watch } from 'vue';
 import {
-  buildInitialList, loadSavedData, saveAllData, saveList,
+  buildInitialList, hydrateItem, loadSavedData, saveAllData, saveList,
   fetchFull, fetchPrice, fetchQuotes, WEEK_MS,
 } from '../api/index.js';
 
@@ -95,11 +95,8 @@ export function useWatchlist({ marketOf, setMarket }) {
   function addStock(stock) {
     if (list.value.some(x => x.code === stock.code)) return;
     // 刪除後重加：搜尋結果只有 {code,name,market} 無 high3y，但快取可能仍有完整資料。
-    // 若快取完整就先帶入（對齊 buildInitialList），避免 3 年高/下一關卡空白。
-    const c = data[stock.code];
-    const item = (c?.high3y && c?.price)
-      ? { code: stock.code, name: stock.name, market: stock.market, ...c, _loading: false, _err: false }
-      : { ...stock, _loading: true, _err: false };
+    // 用 hydrateItem 與 buildInitialList 共用同一份水合：快取完整就先帶入，避免 3 年高/下一關卡空白。
+    const item = hydrateItem(stock.code, stock.name, stock.market, data);
     list.value = [...list.value, item];
     if (stock.market) setMarket(stock.code, stock.market);
     fetchCodes([stock.code]);
