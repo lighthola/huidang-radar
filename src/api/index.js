@@ -132,12 +132,15 @@ export function parseMisQuote(s) {
 export async function fetchQuotes(items) {
   const valid = items.filter(it => it.market);
   if (!valid.length) return {};
+  const want = new Set(valid.map(it => it.code));   // 送出過的 code，供回傳防呆
   const ids = valid.map(it => `${it.market}_${it.code}.tw`).join('|');
   const res = await fetch(`/api/quote?ids=${encodeURIComponent(ids)}`);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const json = await res.json();
   const out = {};
   (json.msgArray || []).forEach(s => {
+    // 防呆：只接受送出過的 code，避免非預期回傳的 s.c 變成 radar_data 的孤兒鍵
+    if (!want.has(s.c)) return;
     const q = parseMisQuote(s);
     if (q) out[s.c] = q;
   });
