@@ -56,7 +56,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+        globPatterns: ['**/*.{js,css,html,svg,png}'],
         // API 執行階段快取（字型已改用系統字，無外部字型可快取）
         runtimeCaching: [
           {

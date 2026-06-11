@@ -16,12 +16,12 @@ const props = defineProps({
 });
 
 const isLoading = computed(() => props.stock._loading);
-const hasData   = computed(() => !isLoading.value && props.stock.price > 0 && props.stock.high5 > 0);
+const hasData   = computed(() => !isLoading.value && props.stock.price > 0 && props.stock.high3y > 0);
 const ret       = computed(() => hasData.value ? retracement(props.stock) : 0);
 const mag        = computed(() => Math.abs(ret.value));
 const sev        = computed(() => severity(mag.value));
 const nl         = computed(() => hasData.value ? nextLevel(props.stock) : null);
-const dropAmt    = computed(() => hasData.value ? props.stock.high5 - props.stock.price : 0);
+const dropAmt    = computed(() => hasData.value ? props.stock.high3y - props.stock.price : 0);
 const levels     = computed(() => {
   const maxLvl = nl.value ? Math.max(35, nl.value.pct + 10) : 35;
   const out = [];
@@ -58,7 +58,7 @@ const dayColor = computed(() =>
         <div class="r-data">
           <div class="r-sub">
             <div class="r-col-lbl">3年高</div>
-            <div class="r-sub-val">{{ stock.high5 > 0 ? fmt(stock.high5) : '──' }}</div>
+            <div class="r-sub-val">{{ stock.high3y > 0 ? fmt(stock.high3y) : '──' }}</div>
           </div>
 
           <div class="r-price">
