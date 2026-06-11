@@ -53,16 +53,23 @@ export function useWatchlist({ marketOf, setMarket }) {
   async function fetchCodes(codes) {
     if (!codes.length) return;
 
+    // 回填 market 到缺漏的項目（舊存檔 / 快取加入路徑），權威來源為 marketOf；
+    // watch(list) 隨後會把帶 market 的清單存回 localStorage（舊使用者自動升級）
+    list.value = list.value.map(s => s.market ? s : { ...s, market: marketOf(s.code) });
+    // 抓資料的市場別：item 自己記住的 market 優先、其次 marketOf。
+    // 官方清單萬一暫時殘缺，個股仍知道自己是 otc，不會退回 .TW 抓嘸資料。
+    const mkt = (code) => list.value.find(s => s.code === code)?.market || marketOf(code);
+
     const fulls = codes.filter(code => {
       const c = data[code];
       return !c?.high3y || (Date.now() - (c._full3yAt || 0) > WEEK_MS);
     });
     await Promise.allSettled(fulls.map(code =>
-      fetchFull(code, marketOf(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
+      fetchFull(code, mkt(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
     ));
 
     const withMkt = codes
-      .map(code => ({ code, market: marketOf(code) }))
+      .map(code => ({ code, market: mkt(code) }))
       .filter(it => it.market);
     let quotes = {};
     if (withMkt.length) {
@@ -73,7 +80,7 @@ export function useWatchlist({ marketOf, setMarket }) {
     const got  = new Set(Object.keys(quotes));
     const rest = codes.filter(code => !got.has(code) && !fulls.includes(code));
     await Promise.allSettled(rest.map(code =>
-      fetchPrice(code, marketOf(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
+      fetchPrice(code, mkt(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
     ));
   }
 
@@ -91,7 +98,7 @@ export function useWatchlist({ marketOf, setMarket }) {
     // 若快取完整就先帶入（對齊 buildInitialList），避免 3 年高/下一關卡空白。
     const c = data[stock.code];
     const item = (c?.high3y && c?.price)
-      ? { code: stock.code, name: stock.name, ...c, _loading: false, _err: false }
+      ? { code: stock.code, name: stock.name, market: stock.market, ...c, _loading: false, _err: false }
       : { ...stock, _loading: true, _err: false };
     list.value = [...list.value, item];
     if (stock.market) setMarket(stock.code, stock.market);
