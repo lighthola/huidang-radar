@@ -15,7 +15,7 @@ export function lsSet(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); 
 export function loadSavedData() { return lsGet(LS_DATA) || {}; }
 export function saveAllData(m)  { lsSet(LS_DATA, m); }
 export function loadSavedList() { return lsGet(LS_LIST); }
-export function saveList(list)  { lsSet(LS_LIST, list.map(({ code, name }) => ({ code, name }))); }
+export function saveList(list)  { lsSet(LS_LIST, list.map(({ code, name, market }) => ({ code, name, market }))); }
 
 // 從 chart result 取現價與今日漲跌
 // 優先用 meta.regularMarketPrice（最即時報價）；當日日線 bar 為 null 時，
@@ -232,9 +232,9 @@ export function buildInitialList() {
   const saved = loadSavedList();
   if (!saved?.length) return [];
   const data = loadSavedData();
-  return saved.map(({ code, name }) => {
+  return saved.map(({ code, name, market }) => {
     const d = data[code];
-    if (d?.high3y && d?.price) return { code, name, ...d, _loading: false, _err: false };
-    return { code, name, high3y: 0, hd: '–', price: 0, day: 0, _loading: true, _err: false };
+    if (d?.high3y && d?.price) return { code, name, market, ...d, _loading: false, _err: false };
+    return { code, name, market, high3y: 0, hd: '–', price: 0, day: 0, _loading: true, _err: false };
   });
 }
