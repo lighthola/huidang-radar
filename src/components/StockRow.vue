@@ -46,7 +46,7 @@ const dayColor = computed(() =>
           <span class="r-code">{{ stock.code }}</span>
           <span class="r-nm">{{ stock.name }}</span>
           <a class="ext-link"
-             :href="`https://tw.stock.yahoo.com/quote/${stock.code}.TW`"
+             :href="`https://tw.stock.yahoo.com/quote/${stock.code}.${stock.market === 'otc' ? 'TWO' : 'TW'}`"
              target="_blank" rel="noopener noreferrer"
              aria-label="開啟 Yahoo 股市"
              @click.stop>
