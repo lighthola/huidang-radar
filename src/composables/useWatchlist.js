@@ -1,6 +1,6 @@
-import { ref, watch } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from 'vue';
 import {
-  buildInitialList, loadSavedData, saveAllData, saveList,
+  buildInitialList, hydrateItem, loadSavedData, saveAllData, saveList,
   fetchFull, fetchPrice, fetchQuotes, WEEK_MS,
 } from '../api/index.js';
 
@@ -13,8 +13,30 @@ export function useWatchlist({ marketOf, setMarket }) {
   // 各股完整資料快取（plain object，非響應式）
   let data = loadSavedData();
 
-  // 儲存清單順序
-  watch(list, (v) => saveList(v), { deep: false });
+  // 儲存清單順序：debounce 合併拖曳中「每跨一格」的高頻寫入；
+  // pagehide / 轉背景時 flush，確保關 app 前最後順序一定落地（避免 debounce 尾端遺失）
+  let saveTimer = null;
+  const flushSave = () => {
+    if (!saveTimer) return;            // 無待寫 → 已是最新，不重複寫
+    clearTimeout(saveTimer);
+    saveTimer = null;
+    saveList(list.value);
+  };
+  watch(list, () => {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => { saveTimer = null; saveList(list.value); }, 400);
+  }, { deep: false });
+
+  const onHide = () => { if (document.visibilityState === 'hidden') flushSave(); };
+  onMounted(() => {
+    window.addEventListener('pagehide', flushSave);
+    document.addEventListener('visibilitychange', onHide);
+  });
+  onUnmounted(() => {
+    flushSave();                       // 元件卸載也先把待寫的存掉
+    window.removeEventListener('pagehide', flushSave);
+    document.removeEventListener('visibilitychange', onHide);
+  });
 
   // 今日日期字串（YYYY/MM/DD，與 fetchFull 的 hd 同格式）
   const todayStr = () => {
@@ -95,11 +117,8 @@ export function useWatchlist({ marketOf, setMarket }) {
   function addStock(stock) {
     if (list.value.some(x => x.code === stock.code)) return;
     // 刪除後重加：搜尋結果只有 {code,name,market} 無 high3y，但快取可能仍有完整資料。
-    // 若快取完整就先帶入（對齊 buildInitialList），避免 3 年高/下一關卡空白。
-    const c = data[stock.code];
-    const item = (c?.high3y && c?.price)
-      ? { code: stock.code, name: stock.name, market: stock.market, ...c, _loading: false, _err: false }
-      : { ...stock, _loading: true, _err: false };
+    // 用 hydrateItem 與 buildInitialList 共用同一份水合：快取完整就先帶入，避免 3 年高/下一關卡空白。
+    const item = hydrateItem(stock.code, stock.name, stock.market, data);
     list.value = [...list.value, item];
     if (stock.market) setMarket(stock.code, stock.market);
     fetchCodes([stock.code]);
