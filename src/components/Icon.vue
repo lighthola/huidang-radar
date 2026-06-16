@@ -49,5 +49,10 @@ const props = defineProps({
       <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M11.5 4.5H15.5V8.5" />
       <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M15.5 4.5l-6 6" />
     </template>
+
+    <template v-else-if="name === 'bell'">
+      <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M10 3a5 5 0 0 1 5 5c0 3 1.5 4 1.5 4h-13s1.5-1 1.5-4a5 5 0 0 1 5-5z" />
+      <path :stroke="stroke" :stroke-width="sw" fill="none" stroke-linecap="round" stroke-linejoin="round" d="M8.5 16a1.5 1.5 0 0 0 3 0" />
+    </template>
   </svg>
 </template>
