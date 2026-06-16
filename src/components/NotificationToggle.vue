@@ -37,7 +37,7 @@ function toggle() {
 </script>
 
 <template>
-  <div v-if="isSupported" class="notif-wrap">
+  <div v-if="isSupported && (isSubscribed || stocks.length > 0)" class="notif-wrap">
     <button
       class="notif-btn"
       :class="{ active: isSubscribed, loading: isLoading }"
