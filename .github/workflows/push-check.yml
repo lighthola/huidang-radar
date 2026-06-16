@@ -3,7 +3,12 @@ name: Push Check
 on:
   schedule:
     - cron: '*/10 1-5 * * 1-5'  # 台灣時間平日 09:00–13:30，每 10 分鐘
-  workflow_dispatch:              # 手動觸發，便於測試
+  workflow_dispatch:
+    inputs:
+      force:
+        description: '跳過盤中限制（輸入 1 強制執行）'
+        required: false
+        default: ''
 
 jobs:
   push-check:
@@ -11,6 +16,9 @@ jobs:
     steps:
       - name: Trigger push check
         run: |
+          FORCE="${{ github.event.inputs.force }}"
+          URL="https://huidang-radar.vercel.app/api/push-check"
+          [ "$FORCE" = "1" ] && URL="${URL}?force=1"
           curl -f --max-time 70 \
                -H "x-push-secret: ${{ secrets.PUSH_CHECK_SECRET }}" \
-               https://huidang-radar.vercel.app/api/push-check
+               "$URL"

@@ -155,7 +155,9 @@ export async function handlePushCheck(req, res) {
     return json(res, 401, { error: 'Unauthorized' })
   }
 
-  // 盤中判斷（UTC+8）
+  // 盤中判斷（UTC+8）；帶 ?force=1 可跳過（測試用）
+  const url    = new URL(req.url, 'http://localhost')
+  const force  = url.searchParams.get('force') === '1'
   const now    = new Date()
   const twHour = (now.getUTCHours() + 8) % 24
   const twMin  = now.getUTCMinutes()
@@ -163,7 +165,7 @@ export async function handlePushCheck(req, res) {
   const isTrading = twDay >= 1 && twDay <= 5
     && (twHour > 9 || (twHour === 9 && twMin >= 0))
     && (twHour < 13 || (twHour === 13 && twMin <= 30))
-  if (!isTrading) return json(res, 200, { skipped: true })
+  if (!isTrading && !force) return json(res, 200, { skipped: true })
 
   // 取得所有訂閱
   let cursor = '0'
