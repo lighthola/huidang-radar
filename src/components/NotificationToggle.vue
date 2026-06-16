@@ -1,5 +1,5 @@
 <script setup>
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import Icon from './Icon.vue'
 import { usePushNotification } from '../composables/usePushNotification.js'
 
@@ -25,8 +25,20 @@ const needsInstall = computed(() => {
   return isIOS && !isStandalone
 })
 
+const hint = ref(null)
+let _hintTimer = null
+function showHint(msg) {
+  hint.value = msg
+  clearTimeout(_hintTimer)
+  _hintTimer = setTimeout(() => { hint.value = null }, 3000)
+}
+
 function toggle() {
   if (isLoading.value) return
+  if (needsInstall.value && !isSubscribed.value) {
+    showHint('請先點「分享」→「加入主畫面」，從主畫面開啟後再開啟通知')
+    return
+  }
   const items = props.stocks.map(s => ({ code: s.code, market: s.market }))
   if (isSubscribed.value) {
     unsubscribe()
@@ -37,7 +49,7 @@ function toggle() {
 </script>
 
 <template>
-  <div v-if="isSupported && (isSubscribed || stocks.length > 0)" class="notif-wrap">
+  <div v-if="(isSupported || needsInstall) && (isSubscribed || stocks.length > 0)" class="notif-wrap">
     <button
       class="notif-btn"
       :class="{ active: isSubscribed, loading: isLoading }"
@@ -49,9 +61,7 @@ function toggle() {
     </button>
     <Teleport to="body">
       <div v-if="error" class="notif-toast notif-toast--error">{{ error }}</div>
-      <div v-else-if="needsInstall && !isSubscribed" class="notif-toast">
-        請先點「分享」→「加入主畫面」，從主畫面開啟後再開啟通知
-      </div>
+      <div v-else-if="hint" class="notif-toast">{{ hint }}</div>
     </Teleport>
   </div>
 </template>
