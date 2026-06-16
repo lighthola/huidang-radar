@@ -29,6 +29,13 @@ export function usePushNotification() {
   const isSubscribed = ref(localStorage.getItem(LS_SUBSCRIBED) === 'true')
   const isLoading    = ref(false)
   const error        = ref(null)
+  let _errorTimer    = null
+
+  function setError(msg) {
+    error.value = msg
+    clearTimeout(_errorTimer)
+    _errorTimer = setTimeout(() => { error.value = null }, 3000)
+  }
 
   async function subscribe(stocks) {
     if (!isSupported.value) return
@@ -37,7 +44,7 @@ export function usePushNotification() {
     try {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') {
-        error.value = '通知權限未授權'
+        setError('通知權限未授權')
         return
       }
       const reg = await navigator.serviceWorker.ready
@@ -55,7 +62,7 @@ export function usePushNotification() {
       isSubscribed.value = true
       localStorage.setItem(LS_SUBSCRIBED, 'true')
     } catch (e) {
-      error.value = e.message
+      setError(e.message)
     } finally {
       isLoading.value = false
     }
@@ -77,7 +84,7 @@ export function usePushNotification() {
       isSubscribed.value = false
       localStorage.setItem(LS_SUBSCRIBED, 'false')
     } catch (e) {
-      error.value = e.message
+      setError(e.message)
     } finally {
       isLoading.value = false
     }

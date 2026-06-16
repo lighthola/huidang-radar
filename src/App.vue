@@ -77,8 +77,8 @@ onUnmounted(() => {
         <div class="brand">
           <span class="brand-mark"><span class="bm-dot" /></span>
           <h1>回檔雷達</h1>
+          <NotificationToggle :stocks="list" />
         </div>
-        <NotificationToggle :stocks="list" />
         <button class="add-btn" @click="searchOpen = true" aria-label="新增股票">
           <Icon name="plus" :size="18" :sw="2.6" stroke="#fff" />
         </button>
