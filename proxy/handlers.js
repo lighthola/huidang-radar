@@ -98,8 +98,8 @@ export function route(req, res) {
   }
 
   // 推播訂閱與觸發（POST/DELETE 不用 cors()/pipeGet）
-  if (pathname === '/api/push/subscribe') return handleSubscribe(req, res)
-  if (pathname === '/api/push/check')     return handlePushCheck(req, res)
+  if (pathname === '/api/push-subscribe') return handleSubscribe(req, res)
+  if (pathname === '/api/push-check')     return handlePushCheck(req, res)
 
   // Yahoo Finance：/api/chart?symbol=0050.TW&range=...&interval=...
   // symbol 放查詢參數（非路徑），避免 Vercel 對多段路徑 / 含點路徑的攔截

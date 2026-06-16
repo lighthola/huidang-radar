@@ -13,4 +13,4 @@ jobs:
         run: |
           curl -f --max-time 70 \
                -H "x-push-secret: ${{ secrets.PUSH_CHECK_SECRET }}" \
-               https://huidang-radar.vercel.app/api/push/check
+               https://huidang-radar.vercel.app/api/push-check

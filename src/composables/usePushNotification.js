@@ -53,7 +53,7 @@ export function usePushNotification() {
         applicationServerKey: urlBase64ToUint8Array(import.meta.env.VITE_VAPID_PUBLIC_KEY),
       })
       const deviceId = getDeviceId()
-      const res = await fetch('/api/push/subscribe', {
+      const res = await fetch('/api/push-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId, subscription, stocks }),
@@ -76,7 +76,7 @@ export function usePushNotification() {
       const sub = await reg.pushManager.getSubscription()
       if (sub) await sub.unsubscribe()
       const deviceId = getDeviceId()
-      await fetch('/api/push/subscribe', {
+      await fetch('/api/push-subscribe', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId }),
@@ -98,7 +98,7 @@ export function usePushNotification() {
       const subscription = await reg.pushManager.getSubscription()
       if (!subscription) return
       const deviceId = getDeviceId()
-      await fetch('/api/push/subscribe', {
+      await fetch('/api/push-subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ deviceId, subscription, stocks }),
