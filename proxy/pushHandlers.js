@@ -129,7 +129,8 @@ export async function handleSubscribe(req, res) {
       await getRedis().set(`sub:${deviceId}`, { subscription, stocks })
       return json(res, 200, { ok: true })
     } catch (e) {
-      return json(res, 500, { error: e.message })
+      console.error('[push-subscribe POST]', e)
+      return json(res, 500, { error: 'internal error' })
     }
   }
 
@@ -140,7 +141,8 @@ export async function handleSubscribe(req, res) {
       await getRedis().del(`sub:${deviceId}`)
       return json(res, 200, { ok: true })
     } catch (e) {
-      return json(res, 500, { error: e.message })
+      console.error('[push-subscribe DELETE]', e)
+      return json(res, 500, { error: 'internal error' })
     }
   }
 
@@ -157,7 +159,7 @@ export async function handlePushCheck(req, res) {
   const now    = new Date()
   const twHour = (now.getUTCHours() + 8) % 24
   const twMin  = now.getUTCMinutes()
-  const twDay  = (now.getUTCDay() + (now.getUTCHours() >= 16 ? 1 : 0)) % 7
+  const twDay  = now.getUTCDay()
   const isTrading = twDay >= 1 && twDay <= 5
     && (twHour > 9 || (twHour === 9 && twMin >= 0))
     && (twHour < 13 || (twHour === 13 && twMin <= 30))
