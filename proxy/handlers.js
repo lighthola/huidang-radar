@@ -6,9 +6,12 @@
  *   /api/quote?ids=tse_2330.tw|otc_6488.tw       → 證交所 MIS 即時報價（帶 Referer）
  *   /api/twse-list                               → 證交所 OpenAPI 上市清單
  *   /api/tpex-list                               → 櫃買 OpenAPI 上櫃清單
+ *   /api/push/subscribe  POST/DELETE             → 訂閱管理（不套用 cors()/pipeGet）
+ *   /api/push/check      GET                     → 推播觸發（不套用 cors()/pipeGet）
  */
 import https from 'node:https';
 import { URL } from 'node:url';
+import { handleSubscribe, handlePushCheck } from './pushHandlers.js';
 
 const YAHOO     = 'query1.finance.yahoo.com';
 const MIS       = 'https://mis.twse.com.tw/stock/api/getStockInfo.jsp';
@@ -93,6 +96,10 @@ export function route(req, res) {
     res.end();
     return true;
   }
+
+  // 推播訂閱與觸發（POST/DELETE 不用 cors()/pipeGet）
+  if (pathname === '/api/push/subscribe') return handleSubscribe(req, res)
+  if (pathname === '/api/push/check')     return handlePushCheck(req, res)
 
   // Yahoo Finance：/api/chart?symbol=0050.TW&range=...&interval=...
   // symbol 放查詢參數（非路徑），避免 Vercel 對多段路徑 / 含點路徑的攔截

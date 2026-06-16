@@ -1,0 +1,16 @@
+name: Push Check
+
+on:
+  schedule:
+    - cron: '*/10 1-5 * * 1-5'  # 台灣時間平日 09:00–13:30，每 10 分鐘
+  workflow_dispatch:              # 手動觸發，便於測試
+
+jobs:
+  push-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger push check
+        run: |
+          curl -f --max-time 70 \
+               -H "x-push-secret: ${{ secrets.PUSH_CHECK_SECRET }}" \
+               https://huidang-radar.vercel.app/api/push/check

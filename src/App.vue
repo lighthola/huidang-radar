@@ -5,6 +5,7 @@ import StatusBar from './components/StatusBar.vue';
 import WatchList from './components/WatchList.vue';
 import EmptyState from './components/EmptyState.vue';
 import SearchSheet from './components/SearchSheet.vue';
+import NotificationToggle from './components/NotificationToggle.vue';
 import { useStockData } from './composables/useStockData.js';
 import { useWatchlist } from './composables/useWatchlist.js';
 import { isTradingHours } from './utils/format.js';
@@ -77,6 +78,7 @@ onUnmounted(() => {
           <span class="brand-mark"><span class="bm-dot" /></span>
           <h1>回檔雷達</h1>
         </div>
+        <NotificationToggle :stocks="list" />
         <button class="add-btn" @click="searchOpen = true" aria-label="新增股票">
           <Icon name="plus" :size="18" :sw="2.6" stroke="#fff" />
         </button>
