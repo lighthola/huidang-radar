@@ -209,14 +209,14 @@ export async function handlePushCheck(req, res) {
     if (isNaN(high)) {
       try {
         high = await fetchYahoo(code, market)
-        await getRedis().zadd('highs', { score: high, member: code })
+        await getRedis().zadd('highs', { score: high, member: code, gt: true })
       } catch { continue }
       continue  // 首次抓取，本輪跳過推播
     }
 
     // 更新高點（ZADD GT：只在更大時更新）
     if (price > high) {
-      await getRedis().zadd('highs', { score: price, member: code })
+      await getRedis().zadd('highs', { score: price, member: code, gt: true })
       await getRedis().del(`notified:${code}`)
       continue  // 創新高，跳過推播
     }
