@@ -1,5 +1,5 @@
 <script setup>
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import Icon from './Icon.vue'
 import { usePushNotification } from '../composables/usePushNotification.js'
 
@@ -7,7 +7,16 @@ const props = defineProps({
   stocks: { type: Array, default: () => [] },
 })
 
-const { isSupported, isSubscribed, isLoading, error, subscribe, unsubscribe } = usePushNotification()
+const { isSupported, isSubscribed, isLoading, error, subscribe, unsubscribe, syncStocks } = usePushNotification()
+
+let syncTimer = null
+watch(() => props.stocks, (stocks) => {
+  if (!isSubscribed.value) return
+  clearTimeout(syncTimer)
+  syncTimer = setTimeout(() => {
+    syncStocks(stocks.map(s => ({ code: s.code, market: s.market })).filter(s => s.market))
+  }, 1000)
+}, { deep: true })
 
 const needsInstall = computed(() => {
   if (typeof window === 'undefined') return false
