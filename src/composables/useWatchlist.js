@@ -63,9 +63,11 @@ export function useWatchlist({ marketOf, setMarket }) {
   }
 
   function markErr(code) {
-    list.value = list.value.map(s =>
-      s.code === code ? { ...s, _loading: false, _err: true } : s
-    );
+    list.value = list.value.map(s => {
+      if (s.code !== code) return s;
+      if (s.price > 0) return { ...s, _loading: false };
+      return { ...s, _loading: false, _err: true };
+    });
   }
 
   // 對一組 code 抓資料
@@ -73,7 +75,7 @@ export function useWatchlist({ marketOf, setMarket }) {
   // 2) 全部：證交所 MIS 批次即時報價，覆蓋現價/漲跌
   // 3) MIS 未涵蓋且非 full：Yahoo fetchPrice 後備
   async function fetchCodes(codes) {
-    if (!codes.length) return;
+    if (!codes.length) return { quotesOk: true };
 
     // 回填 market 到缺漏的項目（舊存檔 / 快取加入路徑），權威來源為 marketOf；
     // watch(list) 隨後會把帶 market 的清單存回 localStorage（舊使用者自動升級）
@@ -94,8 +96,9 @@ export function useWatchlist({ marketOf, setMarket }) {
       .map(code => ({ code, market: mkt(code) }))
       .filter(it => it.market);
     let quotes = {};
+    let quotesOk = true;
     if (withMkt.length) {
-      try { quotes = await fetchQuotes(withMkt); } catch {}
+      try { quotes = await fetchQuotes(withMkt); } catch { quotesOk = false; }
     }
     Object.entries(quotes).forEach(([code, q]) => updateStock(code, q));
 
@@ -104,14 +107,19 @@ export function useWatchlist({ marketOf, setMarket }) {
     await Promise.allSettled(rest.map(code =>
       fetchPrice(code, mkt(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
     ));
+
+    return { quotesOk };
   }
 
-  function refresh() {
-    if (refreshing.value) return Promise.resolve();
+  async function refresh() {
+    if (refreshing.value) return { ok: false, skipped: true };
     refreshing.value = true;
-    return fetchCodes(list.value.map(s => s.code)).finally(() => {
+    try {
+      const { quotesOk } = await fetchCodes(list.value.map(s => s.code));
+      return { ok: quotesOk };
+    } finally {
       refreshing.value = false;
-    });
+    }
   }
 
   function addStock(stock) {

@@ -18,6 +18,14 @@ const { list, refreshing, flash, fetchCodes, refresh, addStock, setList } = wl;
 
 const now        = ref(new Date());
 const searchOpen = ref(false);
+const toast      = ref('');
+let toastTimer   = null;
+
+function showToast(msg) {
+  toast.value = msg;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { toast.value = ''; }, 3000);
+}
 
 // 標題列（品牌列）隨捲動收合；狀態列恆顯示，點擊狀態列可展回標題列
 const brandHidden = ref(false);
@@ -42,8 +50,11 @@ function revealBrand() {
 
 const inList = computed(() => new Set(list.value.map(x => x.code)));
 
-function doRefresh() {
-  return refresh().then(() => { now.value = new Date(); });
+async function doRefresh() {
+  const { ok, skipped } = await refresh();
+  if (skipped) return;
+  if (ok) now.value = new Date();
+  else showToast('更新失敗，請稍後再試');
 }
 
 // 掛載：載入官方清單（含 market）→ 抓自選股報價（含 MIS 即時）
@@ -66,6 +77,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (timer) clearInterval(timer);
   if (lockTimer) clearTimeout(lockTimer);
+  if (toastTimer) clearTimeout(toastTimer);
   document.removeEventListener('visibilitychange', onVisible);
 });
 </script>
@@ -83,7 +95,7 @@ onUnmounted(() => {
           <Icon name="plus" :size="18" :sw="2.6" stroke="#fff" />
         </button>
       </div>
-      <StatusBar :now="now" :collapsed="brandHidden" @click="revealBrand" />
+      <StatusBar :now="now" :collapsed="brandHidden" :refreshing="refreshing" @click="revealBrand" />
     </header>
 
     <EmptyState v-if="list.length === 0" @add="searchOpen = true" />
@@ -102,5 +114,7 @@ onUnmounted(() => {
                  :in-list="inList"
                  @add="addStock"
                  @close="searchOpen = false" />
+
+    <div v-if="toast" class="notif-toast notif-toast--error notif-toast--below">{{ toast }}</div>
   </div>
 </template>

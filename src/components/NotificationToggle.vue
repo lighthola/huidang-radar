@@ -94,20 +94,3 @@ function toggle() {
 }
 </style>
 
-<style>
-.notif-toast {
-  position: fixed;
-  top: calc(env(safe-area-inset-top, 0px) + 72px);
-  right: 16px;
-  background: #1e1e1e;
-  color: #ccc;
-  font-size: 12px;
-  line-height: 1.5;
-  padding: 8px 12px;
-  border-radius: 8px;
-  max-width: 220px;
-  z-index: 200;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
-}
-.notif-toast--error { color: #FF9500; }
-</style>
