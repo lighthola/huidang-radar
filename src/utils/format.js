@@ -11,6 +11,16 @@ export function retracement(stock) {
   return ((stock.price - stock.high3y) / stock.high3y) * 100;
 }
 
+// 3年高顯示：還原後與未還原不同時附註實際高點，如 119.84(123.30)
+export function fmtHigh3y(stock) {
+  const { high3y, high3yRaw } = stock;
+  if (!(high3y > 0)) return '──';
+  if (high3yRaw > 0 && Math.abs(high3yRaw - high3y) >= 0.005) {
+    return `${fmt(high3y)}(${fmt(high3yRaw)})`;
+  }
+  return fmt(high3y);
+}
+
 export function severity(mag) {
   if (mag < 5) return 'mild';
   if (mag < 15) return 'warn';

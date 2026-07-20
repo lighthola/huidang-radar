@@ -58,21 +58,23 @@ export async function fetchFull(code, market) {
   const closes = r.indicators.quote[0].close;
   const highs  = r.indicators.quote[0].high;
 
-  // 3 年高點：盤中最高價 × 還原係數（adjclose/close），正確處理分割
-  let high3y = 0, hIdx = 0;
+  // 3 年高點：盤中最高價 × 還原係數（adjclose/close），正確處理分割與除息
+  // high3yRaw：同一天的未還原原始最高價，供顯示用（還原/未還原不同時附註實際高點）
+  let high3y = 0, high3yRaw = 0, hIdx = 0;
   for (let i = 0; i < highs.length; i++) {
     if (highs[i] !== null && closes[i] && adjcl[i]) {
       const adjH = highs[i] * (adjcl[i] / closes[i]);
-      if (adjH > high3y) { high3y = adjH; hIdx = i; }
+      if (adjH > high3y) { high3y = adjH; high3yRaw = highs[i]; hIdx = i; }
     }
   }
   high3y = +high3y.toFixed(2);
+  high3yRaw = +high3yRaw.toFixed(2);
 
   const dt = new Date(ts[hIdx] * 1000);
   const hd = `${dt.getFullYear()}/${String(dt.getMonth() + 1).padStart(2, '0')}/${String(dt.getDate()).padStart(2, '0')}`;
 
   const { price, day } = currentQuote(r);
-  return { high3y, hd, price, day, _full3yAt: Date.now() };
+  return { high3y, high3yRaw, hd, price, day, _full3yAt: Date.now() };
 }
 
 // 5 日資料 → 現價 + 今日漲跌（Yahoo 後備）

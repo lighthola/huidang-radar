@@ -53,7 +53,7 @@ export function useWatchlist({ marketOf, setMarket }) {
       const { high, ...rest } = patch;
       const baseHigh = rest.high3y ?? data[code]?.high3y ?? 0;
       // 僅在「已有已知 3 年高且被突破」時上修；無 3 年高時不以當日高捏造
-      patch = (baseHigh > 0 && high > baseHigh) ? { ...rest, high3y: high, hd: todayStr() } : rest;
+      patch = (baseHigh > 0 && high > baseHigh) ? { ...rest, high3y: high, high3yRaw: high, hd: todayStr() } : rest;
     }
     list.value = list.value.map(s =>
       s.code === code ? { ...s, ...patch, _loading: false, _err: false } : s
