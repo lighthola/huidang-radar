@@ -86,7 +86,8 @@ export function useWatchlist({ marketOf, setMarket }) {
 
     const fulls = codes.filter(code => {
       const c = data[code];
-      return !c?.high3y || (Date.now() - (c._full3yAt || 0) > WEEK_MS);
+      // high3yRaw 為新增欄位：舊快取沒有時強制重抓一次補上，不必等滿一週
+      return !c?.high3y || c.high3yRaw == null || (Date.now() - (c._full3yAt || 0) > WEEK_MS);
     });
     await Promise.allSettled(fulls.map(code =>
       fetchFull(code, mkt(code)).then(d => updateStock(code, d)).catch(() => markErr(code))
