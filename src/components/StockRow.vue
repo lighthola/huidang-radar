@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue';
 import Icon from './Icon.vue';
 import { useShareCard } from '../composables/useShareCard.js';
-import { retracement, severity, nextLevel, fmt, fmtPct, SEV_COLOR } from '../utils/format.js';
+import { retracement, severity, nextLevel, fmt, fmtPct, fmtHigh3y, SEV_COLOR } from '../utils/format.js';
 
 const { sharing, shareRow } = useShareCard();
 const faceRef = ref(null);
@@ -58,7 +58,7 @@ const dayColor = computed(() =>
         <div class="r-data">
           <div class="r-sub">
             <div class="r-col-lbl">3年高</div>
-            <div class="r-sub-val">{{ stock.high3y > 0 ? fmt(stock.high3y) : '──' }}</div>
+            <div class="r-sub-val">{{ fmtHigh3y(stock) }}</div>
           </div>
 
           <div class="r-price">
